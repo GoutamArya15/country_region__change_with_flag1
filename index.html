@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    .dropdown-btn {
+      background-color: #ffffff;
+      color: black;
+      padding: 10px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+    }
+
+    .dropdown-btn img {
+      width: 20px;
+      height: 15px;
+      margin-right: 10px;
+    }
+
+    .dropdown-content {
+      display: none;
+      position: absolute;
+      background-color: white;
+      min-width: 200px;
+      border: 1px solid #ddd;
+      z-index: 1;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .dropdown-content div {
+      padding: 10px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+    }
+
+    .dropdown-content div:hover {
+      background-color: #f1f1f1;
+    }
+
+    .dropdown-content div img {
+      width: 20px;
+      height: 15px;
+      margin-right: 10px;
+    }
+
+    .search-input {
+      padding: 8px;
+      border: 1px solid #ccc;
+      width: calc(100% - 20px);
+      /* Adjust width to account for padding */
+      margin: 5px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="select_option">
+      <div class="custom-dropdown">
+        <div class="dropdown-btn" onclick="toggleDropdown('countryDropdown')">
+          <img id="selectedFlag" src="" alt="flag" style="display:none;" />
+          <span>Select Country</span>
+        </div>
+        <div class="dropdown-content" id="countryDropdown">
+          <input type="text" class="search-input" placeholder="Search Country..." oninput="filterCountries()">
+        </div>
+      </div>
+      <select class="form-select state" aria-label="Default select example" onchange="loadCities()">
+        <option selected>Select State</option>
+      </select>
+      <select class="form-select city" aria-label="Default select example">
+        <option selected>Select City</option>
+      </select>
+    </div>
+
+  </div>
+
+  <!-- Bootstrap Bundle with Popper -->
+  <script>
+    window.addEventListener('mouseup', function (event) {
+      var pol = document.getElementById('countryDropdown');
+      if (event.target != pol && event.target.parentNode != pol) {
+        pol.style.display = 'none';
+      }
+    });
+
+    var config = {
+      cUrl: 'https://api.countrystatecity.in/v1/countries',
+      ckey: 'NHhvOEcyWk50N2Vna3VFTE00bFp3MjFKR0ZEOUhkZlg4RTk1MlJlaA=='
+    }
+
+    var countrySelect = document.querySelector('.dropdown-btn'),
+      stateSelect = document.querySelector('.state'),
+      citySelect = document.querySelector('.city');
+
+    var countriesData = []; // Array to hold country data
+
+    function loadCountries() {
+      let apiEndPoint = config.cUrl;
+
+      fetch(apiEndPoint, { headers: { "X-CSCAPI-KEY": config.ckey } })
+        .then(response => response.json())
+        .then(data => {
+          countriesData = data; // Store country data
+          const countryDropdown = document.getElementById('countryDropdown');
+          countriesData.forEach(country => {
+            const optionDiv = document.createElement('div');
+            const flagUrl = `https://flagcdn.com/16x12/${country.iso2.toLowerCase()}.png`;
+            optionDiv.innerHTML = `<img src="${flagUrl}" alt="flag" /> ${country.name}`;
+            optionDiv.setAttribute('data-value', country.iso2);
+            optionDiv.onclick = function () {
+              countrySelect.setAttribute('data-value', country.iso2);
+              countrySelect.querySelector('span').textContent = country.name; // Set the selected country name
+              document.getElementById('selectedFlag').src = flagUrl; // Set the selected flag
+              document.getElementById('selectedFlag').style.display = 'block'; // Show the selected flag
+              loadStates(country.iso2);
+              closeDropdown('countryDropdown');
+            };
+
+            countryDropdown.appendChild(optionDiv);
+          });
+        })
+        .catch(error => console.error('Error loading countries:', error));
+
+      stateSelect.disabled = true;
+      citySelect.disabled = true;
+      stateSelect.style.pointerEvents = 'none';
+      citySelect.style.pointerEvents = 'none';
+    }
+
+    function filterCountries() {
+      const searchInput = document.querySelector('.search-input').value.toLowerCase();
+      const countryDropdown = document.getElementById('countryDropdown');
+
+      // Clear previous country options
+      countryDropdown.querySelectorAll('div:not(.search-input)').forEach(div => div.remove());
+
+      // Filter and display countries
+      countriesData.forEach(country => {
+        if (country.name.toLowerCase().includes(searchInput)) {
+          const optionDiv = document.createElement('div');
+          const flagUrl = `https://flagcdn.com/16x12/${country.iso2.toLowerCase()}.png`;
+          optionDiv.innerHTML = `<img src="${flagUrl}" alt="flag" /> ${country.name}`;
+          optionDiv.setAttribute('data-value', country.iso2);
+          optionDiv.onclick = function () {
+            countrySelect.setAttribute('data-value', country.iso2);
+            countrySelect.querySelector('span').textContent = country.name; // Set the selected country name
+            document.getElementById('selectedFlag').src = flagUrl; // Set the selected flag
+            document.getElementById('selectedFlag').style.display = 'block'; // Show the selected flag
+            loadStates(country.iso2);
+            closeDropdown('countryDropdown');
+          };
+
+          countryDropdown.appendChild(optionDiv);
+        }
+      });
+    }
+
+    function loadStates(countryCode) {
+      stateSelect.disabled = false;
+      citySelect.disabled = true;
+      stateSelect.style.pointerEvents = 'auto';
+      citySelect.style.pointerEvents = 'none';
+
+      stateSelect.innerHTML = '<option value="">Select State</option>'; // Clear existing states
+      citySelect.innerHTML = '<option value="">Select City</option>'; // Clear existing city options
+
+      fetch(`${config.cUrl}/${countryCode}/states`, { headers: { "X-CSCAPI-KEY": config.ckey } })
+        .then(response => response.json())
+        .then(data => {
+          data.forEach(state => {
+            const option = document.createElement('option');
+            option.value = state.iso2;
+            option.textContent = state.name;
+            stateSelect.appendChild(option);
+          });
+        })
+        .catch(error => console.error('Error loading states:', error));
+    }
+
+    function loadCities() {
+      const selectedCountryCode = countrySelect.getAttribute('data-value');  // Get the selected country value
+      const selectedStateCode = stateSelect.value;  // Get the selected state value
+
+      if (!selectedCountryCode || !selectedStateCode) {
+        console.error("Country or state not selected.");
+        return;
+      }
+
+      citySelect.disabled = false;
+      citySelect.style.pointerEvents = 'auto';
+      citySelect.innerHTML = '<option value="">Select City</option>'; // Clear existing city options
+
+      fetch(`${config.cUrl}/${selectedCountryCode}/states/${selectedStateCode}/cities`, { headers: { "X-CSCAPI-KEY": config.ckey } })
+        .then(response => response.json())
+        .then(data => {
+          data.forEach(city => {
+            const option = document.createElement('option');
+            option.value = city.iso2;
+            option.textContent = city.name;
+            citySelect.appendChild(option);
+          });
+        })
+        .catch(error => console.error('Error loading cities:', error));
+    }
+
+    function toggleDropdown(id) {
+      const dropdown = document.getElementById(id);
+      dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+    }
+
+    function closeDropdown(id) {
+      document.getElementById(id).style.display = 'none';
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+      loadCountries();
+
+      // Close dropdowns when clicking outside
+      document.body.addEventListener("click", function (event) {
+        const countryDropdown = document.getElementById('countryDropdown');
+        if (countryDropdown.style.display === 'block' && !countryDropdown.contains(event.target) && !event.target.matches('.dropdown-btn')) {
+          closeDropdown('countryDropdown');
+        }
+      });
+    });
+  </script>
+</body>
+
+</html>
